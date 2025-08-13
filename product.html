@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Simple spinner for loading state */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Ensure video fits container */
+        .video-container iframe,
+        .video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
+            overflow: hidden;
+            max-width: 100%;
+            background: #000;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- This container shows a loading spinner while data is being fetched -->
+    <div id="loader-container" class="flex justify-center items-center min-h-screen">
+        <div class="loader"></div>
+    </div>
+
+    <!-- This is the main container for all your product information. It's hidden by default. -->
+    <div id="product-container" class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 hidden">
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Left Side: Image & Video Section -->
+            <div>
+                <div class="bg-white rounded-lg shadow-md overflow-hidden mb-4">
+                    <img id="product-image" src="https://placehold.co/600x600/e2e8f0/e2e8f0?text=Loading..." alt="Product Image" class="w-full h-auto object-cover">
+                </div>
+                <div id="video-container" class="video-container bg-white rounded-lg shadow-md overflow-hidden hidden">
+                    <!-- Video will be embedded here by the script -->
+                </div>
+            </div>
+
+            <!-- Right Side: Details Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h1 id="product-name" class="text-3xl font-bold text-gray-900 mb-2">Product Name</h1>
+                <p id="model-no" class="text-sm text-gray-500 mb-4">Model: </p>
+                
+                <div class="mb-4">
+                    <span id="product-price" class="text-4xl font-bold text-blue-600"></span>
+                </div>
+
+                <div id="stock-status" class="flex items-center mb-6">
+                    <!-- Stock status will be injected here by the script -->
+                </div>
+
+                <div class="border-t border-gray-200 pt-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-3">Specifications</h3>
+                    <ul class="space-y-2 text-gray-600">
+                        <li id="bulb-holder" class="flex justify-between"><span>Bulb Holder:</span><span class="font-medium text-gray-900"></span></li>
+                        <li id="dimensions" class="flex justify-between"><span>Dimensions:</span><span class="font-medium text-gray-900"></span></li>
+                        <li id="material" class="flex justify-between"><span>Material:</span><span class="font-medium text-gray-900"></span></li>
+                        <li id="color" class="flex justify-between"><span>Color:</span><span class="font-medium text-gray-900"></span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- This container shows an error message if the product isn't found -->
+    <div id="error-container" class="text-center p-10 hidden">
+        <h2 class="text-2xl font-bold text-red-600">Product Not Found</h2>
+        <p class="text-gray-600 mt-2">The requested product could not be found. Please check the NFC tag or the URL.</p>
+    </div>
+
+
+    <script>
+        // --- CONFIGURATION ---
+        // 1. Paste the link to your published Google Sheet CSV here.
+        const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/18pminhKKbuP06McAuYK2QnXlffWUh-Nlt-VWMUXQ1BA/edit?usp=sharing';
+        
+        // 2. Set your currency symbol.
+        const CURRENCY_SYMBOL = '₹'; // Change to '$', '€', etc. as needed
+
+        // --- SCRIPT LOGIC (No need to edit below this line) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = urlParams.get('id');
+
+            if (!productId) {
+                showError('No product ID provided in the URL. Make sure your NFC tag URL is correct (e.g., .../page.html?id=MODEL123).');
+                return;
+            }
+            
+            if (GOOGLE_SHEET_CSV_URL === 'YOUR_GOOGLE_SHEET_CSV_URL_HERE' || GOOGLE_SHEET_CSV_URL === '') {
+                 showError('Google Sheet URL is not configured in the HTML file.');
+                 return;
+            }
+
+            fetchProductData(productId);
+        });
+
+        async function fetchProductData(productId) {
+            try {
+                // We add a timestamp to prevent the browser from caching the CSV file, ensuring live data.
+                const response = await fetch(`${GOOGLE_SHEET_CSV_URL}&t=${new Date().getTime()}`);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok. Check if the Google Sheet is published correctly.');
+                }
+                const csvText = await response.text();
+                const products = parseCSV(csvText);
+                
+                // The first column (index 0) in the CSV is assumed to be the Model No (our ID)
+                const product = products.find(p => p && p[0] && p[0].trim() === productId.trim());
+
+                if (product) {
+                    displayProduct(product);
+                } else {
+                    showError(`Product with ID "${productId}" was not found in the Google Sheet.`);
+                }
+            } catch (error) {
+                console.error('Error fetching or parsing data:', error);
+                showError('Could not load product data. Please check your internet connection and the sheet configuration.');
+            }
+        }
+
+        function parseCSV(text) {
+            // Simple CSV parser that handles quoted fields
+            const rows = text.split(/\r?\n/).map(row => {
+                const results = [];
+                let current = '';
+                let inQuote = false;
+                for (let i = 0; i < row.length; i++) {
+                    const char = row[i];
+                    if (char === '"' && (i === 0 || row[i-1] !== '\\')) {
+                        inQuote = !inQuote;
+                    } else if (char === ',' && !inQuote) {
+                        results.push(current.replace(/^"|"$/g, '').trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                results.push(current.replace(/^"|"$/g, '').trim());
+                return results;
+            });
+            // Assumes first row is headers, so we skip it
+            return rows.slice(1);
+        }
+
+        function displayProduct(data) {
+            // --- DATA MAPPING ---
+            // Assumes Google Sheet columns are in order:
+            // 0:Model No, 1:Name, 2:Price, 3:Bulb Holder, 4:Dimensions, 5:Material, 6:Color, 7:Image URL, 8:Video URL, 9:Live Stock
+            
+            document.getElementById('product-name').textContent = data[1] || 'N/A';
+            document.getElementById('model-no').textContent = `Model: ${data[0] || 'N/A'}`;
+            
+            // Format price with currency symbol
+            const price = parseFloat(data[2]);
+            const priceElement = document.getElementById('product-price');
+            if (!isNaN(price)) {
+                priceElement.textContent = CURRENCY_SYMBOL + price.toLocaleString('en-IN');
+            } else {
+                priceElement.textContent = 'Price not available';
+            }
+
+            document.querySelector('#bulb-holder span:last-child').textContent = data[3] || 'N/A';
+            document.querySelector('#dimensions span:last-child').textContent = data[4] || 'N/A';
+            document.querySelector('#material span:last-child').textContent = data[5] || 'N/A';
+            document.querySelector('#color span:last-child').textContent = data[6] || 'N/A';
+
+            // Set product image with an error fallback
+            const productImage = document.getElementById('product-image');
+            if (data[7]) {
+                productImage.src = data[7];
+                productImage.onerror = () => {
+                    productImage.src = 'https://placehold.co/600x600/f87171/ffffff?text=Image\\nNot+Found';
+                };
+            } else {
+                 productImage.src = 'https://placehold.co/600x600/e2e8f0/ffffff?text=No+Image';
+            }
+
+            // Handle video embedding for YouTube and Vimeo
+            const videoContainer = document.getElementById('video-container');
+            if (data[8]) {
+                try {
+                    const videoUrl = new URL(data[8]);
+                    let embedUrl = '';
+                    if (videoUrl.hostname.includes('youtube.com') || videoUrl.hostname.includes('youtu.be')) {
+                        const videoId = videoUrl.searchParams.get('v') || videoUrl.pathname.split('/').pop();
+                        embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                    } else if (videoUrl.hostname.includes('vimeo.com')) {
+                        const videoId = videoUrl.pathname.split('/').pop();
+                        embedUrl = `https://player.vimeo.com/video/${videoId}`;
+                    }
+                    
+                    if (embedUrl) {
+                        videoContainer.innerHTML = `<iframe src="${embedUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+                        videoContainer.classList.remove('hidden');
+                    }
+                } catch (e) {
+                    console.warn("Invalid video URL:", data[8]);
+                }
+            }
+
+            // Handle stock status display
+            const stockStatusContainer = document.getElementById('stock-status');
+            const stock = parseInt(data[9], 10);
+            if (!isNaN(stock)) {
+                if (stock > 10) {
+                    stockStatusContainer.innerHTML = `<div class="w-3 h-3 bg-green-500 rounded-full mr-2 flex-shrink-0"></div> <span class="text-green-600 font-semibold">In Stock</span>`;
+                } else if (stock > 0) {
+                    stockStatusContainer.innerHTML = `<div class="w-3 h-3 bg-yellow-500 rounded-full mr-2 flex-shrink-0"></div> <span class="text-yellow-600 font-semibold">Low Stock (${stock} left)</span>`;
+                } else {
+                    stockStatusContainer.innerHTML = `<div class="w-3 h-3 bg-red-500 rounded-full mr-2 flex-shrink-0"></div> <span class="text-red-600 font-semibold">Out of Stock</span>`;
+                }
+            } else {
+                 stockStatusContainer.innerHTML = `<div class="w-3 h-3 bg-gray-400 rounded-full mr-2 flex-shrink-0"></div> <span class="text-gray-500 font-semibold">Stock Unknown</span>`;
+            }
+
+
+            // Show the product info and hide the loader
+            document.getElementById('loader-container').classList.add('hidden');
+            document.getElementById('product-container').classList.remove('hidden');
+        }
+
+        function showError(message) {
+            console.error(message);
+            document.getElementById('loader-container').classList.add('hidden');
+            const errorContainer = document.getElementById('error-container');
+            errorContainer.querySelector('p').textContent = message;
+            errorContainer.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

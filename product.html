@@ -100,7 +100,7 @@
     <script>
         // --- CONFIGURATION ---
         // 1. Paste the link to your published Google Sheet CSV here.
-        const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/18pminhKKbuP06McAuYK2QnXlffWUh-Nlt-VWMUXQ1BA/edit?usp=sharing';
+        const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT-1K0XuOKPHVTeMOcf0eGYpL_GIBEdB2Njzgd3yoPASluiplHWa_vO9JgEyXC2pFEhwSk_M1BVKX9V/pub?gid=1897659767&single=true&output=csv';
         
         // 2. Set your currency symbol.
         const CURRENCY_SYMBOL = '₹'; // Change to '$', '€', etc. as needed
@@ -115,7 +115,7 @@
                 return;
             }
             
-            if (GOOGLE_SHEET_CSV_URL === 'YOUR_GOOGLE_SHEET_CSV_URL_HERE' || GOOGLE_SHEET_CSV_URL === '') {
+            if (GOOGLE_SHEET_CSV_URL === 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT-1K0XuOKPHVTeMOcf0eGYpL_GIBEdB2Njzgd3yoPASluiplHWa_vO9JgEyXC2pFEhwSk_M1BVKX9V/pub?gid=1897659767&single=true&output=csv' || GOOGLE_SHEET_CSV_URL === '') {
                  showError('Google Sheet URL is not configured in the HTML file.');
                  return;
             }
@@ -257,4 +257,5 @@
         }
     </script>
 </body>
+
 </html>
